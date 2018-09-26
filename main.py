@@ -23,7 +23,7 @@ from metrics import SSIM
 parser = argparse.ArgumentParser(description="PyTorch DemoireNet")
 parser.add_argument('--upscale_factor', type=int, default=1, help="super resolution upscale factor")
 parser.add_argument("--batchSize", type=int, default=1, help="training batch size")
-parser.add_argument('--testBatchSize', type=int, default=4, help='training batch size')
+parser.add_argument('--testBatchSize', type=int, default=1, help='training batch size')
 parser.add_argument("--nEpochs", type=int, default=100, help="number of epochs to train for")
 parser.add_argument("--lr", type=float, default=1e-3, help="Learning Rate. Default=1e-4")
 parser.add_argument("--step", type=int, default=1000, help="Sets the learning rate to the initial LR decayed by momentum every n epochs, Default: n=250")
@@ -56,10 +56,10 @@ def main():
     cudnn.benchmark = True
         
     print("===> Loading datasets")
-    train_path = "/home/wqy/Documents/BSDS300/images/train_AB/"
-    test_path = "/home/wqy/Documents/BSDS300/images/test_AB/"
-    train_set = ImageDatasetFromFile(train_path,opt.upscale_factor,is_gray=False)
-    test_set = ImageDatasetFromFile(test_path,opt.upscale_factor,is_gray=False )
+    train_path = "/home/wqy/Documents/moire-test/moire-AB/"
+    test_path = "/home/wqy/Documents/moire-test/moire-AB/"
+    train_set = ImageDatasetFromFile(train_path,opt.upscale_factor,is_gray=False, is_train=True)
+    test_set = ImageDatasetFromFile(test_path,opt.upscale_factor,is_gray=False ,is_train=False)
     training_data_loader = DataLoader(dataset=train_set, num_workers=opt.threads, batch_size=opt.batchSize, shuffle=True)
     testing_data_loader = DataLoader(dataset=test_set, num_workers=opt.threads, batch_size=opt.testBatchSize, shuffle=False)
 
@@ -110,9 +110,26 @@ def train(optimizer, criterion, epoch):
     model.train()
 
     for iteration, batch in enumerate(training_data_loader, 1):
+        inputs, targets = batch[0], batch[1]
+        input = None
+        target = None
+        for key, value in inputs.items():
+            if input is None:
+                input = value
+            else:
+                if(key == '2_1'):
+                    input = torch.cat([input, value])
 
-        #input, target = Variable(batch[0]), Variable(batch[1], requires_grad=False)
-        input, target = batch[0], batch[1]
+        for key, value in targets.items():
+            if  target is None:
+                target = value
+            else:
+                if(key == '2_1'):
+                    target = torch.cat([target, value])
+
+        print('out')
+        #input, target = Variable(input), Variable(target, requires_grad=False)
+
         if opt.cuda:
             input = input.cuda()
             target = target.cuda()
@@ -146,7 +163,6 @@ def test(criterion, epoch):
     print("===> Testing")
     with torch.no_grad():
         for iteration, batch in enumerate(testing_data_loader, 1):
-            # input, target = Variable(batch[0]), Variable(batch[1])
             input, target = batch[0], batch[1]
             if opt.cuda:
                 input = input.cuda()
