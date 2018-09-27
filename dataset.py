@@ -52,16 +52,34 @@ def load_video_image(file_path, input_height=None, input_width=None, output_heig
     input_transform = transforms.Compose([
         transforms.ToTensor()
     ])
-    img = Image.open(file_path)
+    # file_path_target = name_A.replace('source', 'target')
+    # img = Image.open(file_path)
+    # img
+    #
+    # if is_gray is False and img.mode is not 'RGB':
+    #     img = img.convert('RGB')
+    # if is_gray and img.mode is not 'L':
+    #     img = img.convert('L')
+    #
+    # [w, h] = img.size
+    # img_mo = ImageOps.crop(img, (0, 0, w//2, 0))
+    # img_cl = ImageOps.crop(img, (w//2, 0, 0, 0))
+    # [w, h] = img.size
+    # img_mo = ImageOps.crop(img, (0, 0, w//2, 0))
+    # img_cl = ImageOps.crop(img, (w//2, 0, 0, 0))
 
-    if is_gray is False and img.mode is not 'RGB':
-        img = img.convert('RGB')
-    if is_gray and img.mode is not 'L':
-        img = img.convert('L')
+    img_mo = Image.open(file_path)
+    file_path_tar = file_path.replace('source', 'target')
+    img_cl = Image.open(file_path_tar)
 
-    [w, h] = img.size
-    img_mo = ImageOps.crop(img, (0, 0, w//2, 0))
-    img_cl = ImageOps.crop(img, (w//2, 0, 0, 0))
+    if is_gray is False and img_mo.mode is not 'RGB':
+        img_mo = img_mo.convert('RGB')
+        img_cl = img_tar.convert('RGB')
+    if is_gray and img_mo.mode is not 'L':
+        img_mo = img_mo.convert('L')
+        img_cl = img_tar.convert('L')
+
+    [w, h] = img_mo.size
 
     if is_mirror and random.randint(0,1) is 0:
         img_mo = ImageOps.mirror(img_mo)
@@ -72,7 +90,7 @@ def load_video_image(file_path, input_height=None, input_width=None, output_heig
         img_cl = img_cl.resize((input_width, input_height), Image.BICUBIC)
 
     if is_crop:
-        w = w//2
+        #w = w//2
         if is_duplicate:
             crop_width = w - w % 128
             crop_height = h - h % 128
@@ -80,7 +98,6 @@ def load_video_image(file_path, input_height=None, input_width=None, output_heig
             crop_width = w - w % 256
             crop_height = h - h % 256
         if is_random_crop and is_train:
-            print('into crop')
             cx1 = random.randint(0, w-crop_width)
             cx2 = w - crop_width - cx1
             cy1 = random.randint(0, h-crop_height)
@@ -92,7 +109,6 @@ def load_video_image(file_path, input_height=None, input_width=None, output_heig
         img_cl = ImageOps.crop(img_cl, (cx1, cy1, cx2, cy2))
 
     if not is_train:
-        print('into test')
         img_mo = input_transform(img_mo)
         img_cl = input_transform(img_cl)
         return img_mo,img_cl
@@ -192,7 +208,7 @@ def load_video_image(file_path, input_height=None, input_width=None, output_heig
       
       
 class ImageDatasetFromFile(data.Dataset):
-    def __init__(self, root_path,  input_height=None, input_width=None, output_height=256,output_width=256,
+    def __init__(self, root_path,  input_height=None, input_width=None, output_height=None,output_width=None,
                  is_random_crop=True, is_mirror=True, is_gray=False , is_duplicate = False , is_crop =True,
                  is_train=False):
         super(ImageDatasetFromFile, self).__init__()

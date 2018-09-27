@@ -56,8 +56,8 @@ def main():
     cudnn.benchmark = True
         
     print("===> Loading datasets")
-    train_path = "/home/wqy/Documents/moire-test/moire-AB/"
-    test_path = "/home/wqy/Documents/moire-test/moire-AB/"
+    train_path = "/home/wqy/Documents/moire-test/source/"
+    test_path = "/home/wqy/Documents/moire-test/source/"
     train_set = ImageDatasetFromFile(train_path,opt.upscale_factor,is_gray=False, is_train=True)
     test_set = ImageDatasetFromFile(test_path,opt.upscale_factor,is_gray=False ,is_train=False)
     training_data_loader = DataLoader(dataset=train_set, num_workers=opt.threads, batch_size=opt.batchSize, shuffle=True)
