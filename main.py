@@ -117,18 +117,13 @@ def train(optimizer, criterion, epoch):
             if input is None:
                 input = value
             else:
-                if(key == '2_1'):
-                    input = torch.cat([input, value])
+                input = torch.cat([input, value])
 
         for key, value in targets.items():
-            if  target is None:
+            if target is None:
                 target = value
             else:
-                if(key == '2_1'):
-                    target = torch.cat([target, value])
-
-        print('out')
-        #input, target = Variable(input), Variable(target, requires_grad=False)
+                target = torch.cat([target, value])
 
         if opt.cuda:
             input = input.cuda()
@@ -170,14 +165,13 @@ def test(criterion, epoch):
             prediction = model(input)
             #prediction=nn.parallel.data_parallel(model,input,range(2))
             mse = criterion(prediction, target)
-            #psnr = 10 * log10(1 / mse.item()
-            psnr = 1
+            psnr = 10 * log10(1 / mse.item())
             ssim = SSIM(prediction, target)
             avg_psnr += psnr
             avg_ssim += ssim
             avg_mse += mse.item()
 
-            if epoch%25 == 0:
+            if epoch%1 == 0:
                 save_images(epoch,prediction,'epoch_{}_img_{}.jpg'.format(epoch,iteration),1)
                 #prediction_output_filename= "result/prediction_{}.jpg".format(batch)
                 #prediction.save(prediction_output_filename)

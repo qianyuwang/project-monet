@@ -90,9 +90,14 @@ def load_video_image(file_path, input_height=None, input_width=None, output_heig
             cy2 = cy1 = int(round((h-crop_height)/2.))
         img_mo = ImageOps.crop(img_mo, (cx1, cy1, cx2, cy2))
         img_cl = ImageOps.crop(img_cl, (cx1, cy1, cx2, cy2))
-    print('into 1')
+
+    if not is_train:
+        print('into test')
+        img_mo = input_transform(img_mo)
+        img_cl = input_transform(img_cl)
+        return img_mo,img_cl
+
    # if is_train:
-    print('into2')
     [w, h] = img_mo.size
     img_mos= {}
     img_cls = {}
@@ -137,11 +142,7 @@ def load_video_image(file_path, input_height=None, input_width=None, output_heig
         img_mo5_6 = ImageOps.crop(img_mo, (4*pix, 5*pix,    w - pp - 4*pix,   h - pp- 5*pix))
         img_mo6_6 = ImageOps.crop(img_mo, (5*pix, 5*pix,    w - pp - 5*pix,   h - pp- 5*pix))
 
-        img_mos = zip(img_mo1_1,img_mo1_2,img_mo1_3,img_mo2_1,img_mo2_2,img_mo2_3,img_mo3_1,img_mo3_2,img_mo3_3)
-        img_cls = zip(img_cl1_1, img_cl1_2, img_cl1_3, img_cl2_1, img_cl2_2, img_cl2_3, img_cl3_1, img_cl3_2, img_cl3_3)
-
     else:
-        print('into not du')
         pix = 256
         pp = 256
         img_mo1_1 = ImageOps.crop(img_mo, (0,     0,    w - pp,           h - pp))
@@ -184,11 +185,7 @@ def load_video_image(file_path, input_height=None, input_width=None, output_heig
 
     return img_mos, img_cls
 
-    # else:
-    #     print('into test')
-    #     img_mo = input_transform(img_mo)
-    #     img_cl = input_transform(img_cl)
-    #     return img_mo,img_cl
+
 
 
 
