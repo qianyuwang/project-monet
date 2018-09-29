@@ -59,18 +59,18 @@ def main():
     cudnn.benchmark = True
         
     print("===> Loading datasets")
-    train_path_src = "/home/wqy/Documents/moire-test/source/"
-    train_path_tgt = "/home/wqy/Documents/moire-test/source/"
-    test_path_src = "/home/wqy/Documents/moire-test/source/"
-    test_path_tgt = "/home/wqy/Documents/moire-test/source/"
+    train_path_src = "/home/diplab/Documents/demoire/moire-data/trainData/source/"
+    train_path_tgt = "/home/diplab/Documents/demoire/moire-data/trainData/target/"
+    test_path_src = "/home/diplab/Documents/demoire/moire-data/testData/source/"
+    test_path_tgt = "/home/diplab/Documents/demoire/moire-data/testData/target/"
 
     training_data_loader = torch.utils.data.DataLoader(
         ImageList(rootsour=train_path_src, roottar=train_path_tgt,
                   transform=transforms.Compose([
             transforms.RandomCrop(640),
-            transforms.FiveCrop(256),
             transforms.RandomHorizontalFlip(),
-            transforms.ToTensor(),
+            transforms.FiveCrop(256),
+            Lambda(lambda crops: torch.stack([ToTensor()(crop) for crop in crops])),
         ])),
         batch_size=opt.batchSize, shuffle=True)
 
@@ -129,28 +129,23 @@ def train(optimizer, criterion, epoch):
     model.train()
 
     for iteration, batch in enumerate(training_data_loader, 1):
-        inputs, targets = batch[0], batch[1]
-        input = None
-        target = None
-        for key, value in inputs.items():
-            if input is None:
-                input = value
-            else:
-                input = torch.cat([input, value])
+        input, target = batch[0], batch[1]
+        bs, ncrops, c, h, w = input.size()
 
-        for key, value in targets.items():
-            if target is None:
-                target = value
-            else:
-                target = torch.cat([target, value])
+        input = input.view(-1, c, h, w)
+
+
 
         if opt.cuda:
             input = input.cuda()
             target = target.cuda()
             
         output = model(input)
+        output_avg = output.view(bs, ncrops, -1).mean(1)  # avg over crops
+        target = target.view(-1, c, h, w)
+        target_avg = target.view(bs, ncrops, -1).mean(1)  # avg over crops
         #output=nn.parallel.data_parallel(model,input,range(2))
-        loss = criterion(output, target)
+        loss = criterion(output_avg, target_avg)
         epoch_loss += loss.item()
 
         
