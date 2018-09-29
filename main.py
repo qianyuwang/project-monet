@@ -9,6 +9,8 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
+import torch.utils.data
+import torchvision.transforms as transforms
 #from srresnet import Net
 from monet import MoireCNN
 from dataset import ImageDatasetFromFile
@@ -18,6 +20,7 @@ import torch.utils.model_zoo as model_zoo
 from SaveImage import save_images
 from scipy.ndimage import filters
 from metrics import SSIM
+from loadimg import ImageList
 
 # Training settings
 parser = argparse.ArgumentParser(description="PyTorch DemoireNet")
@@ -56,13 +59,29 @@ def main():
     cudnn.benchmark = True
         
     print("===> Loading datasets")
-    train_path = "/home/wqy/Documents/moire-test/source/"
-    test_path = "/home/wqy/Documents/moire-test/source/"
-    train_set = ImageDatasetFromFile(train_path,opt.upscale_factor,is_gray=False, is_train=True)
-    test_set = ImageDatasetFromFile(test_path,opt.upscale_factor,is_gray=False ,is_train=False)
-    training_data_loader = DataLoader(dataset=train_set, num_workers=opt.threads, batch_size=opt.batchSize, shuffle=True)
-    testing_data_loader = DataLoader(dataset=test_set, num_workers=opt.threads, batch_size=opt.testBatchSize, shuffle=False)
+    train_path_src = "/home/wqy/Documents/moire-test/source/"
+    train_path_tgt = "/home/wqy/Documents/moire-test/source/"
+    test_path_src = "/home/wqy/Documents/moire-test/source/"
+    test_path_tgt = "/home/wqy/Documents/moire-test/source/"
 
+    training_data_loader = torch.utils.data.DataLoader(
+        ImageList(rootsour=train_path_src, roottar=train_path_tgt,
+                  transform=transforms.Compose([
+            transforms.RandomCrop(640),
+            transforms.FiveCrop(256),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+        ])),
+        batch_size=opt.batchSize, shuffle=True)
+
+    testing_data_loader = torch.utils.data.DataLoader(
+        ImageList(rootsour=test_path_src, roottar=test_path_tgt,
+                  transform=transforms.Compose([
+            transforms.CenterCrop(640),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+        ])),
+        batch_size=opt.testBatchSize, shuffle=True)
 
     print("===> Building model")
     model = MoireCNN()
