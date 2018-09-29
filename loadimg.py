@@ -13,7 +13,6 @@ def default_list_reader(file_dir):
     imgList = []
     for dir in source:
         dir_tar = dir[:-10] + 'target.png'
-        # target.append(dir_tar)
         imgList.append((dir, dir_tar))
     return imgList
 
@@ -32,8 +31,6 @@ class ImageList(data.Dataset):
         if self.transform is not None:
             imgsour = self.transform(imgsour)
             imgtar = self.transform(imgtar)
-        #print(imgsour.size())
-        #print(imgtar.size())
         return imgsour, imgtar
 
     def __len__(self):
