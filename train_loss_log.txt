@@ -1,5 +1,0 @@
-===>Training Epoch [1] Complete: Avg. MSE Loss: 0.9440107942
-===>Training Epoch [2] Complete: Avg. MSE Loss: 0.2826262191
-===>Training Epoch [3] Complete: Avg. MSE Loss: 0.0834732935
-===>Training Epoch [1] Complete: Avg. MSE Loss: 1.1688861489
-===>Training Epoch [2] Complete: Avg. MSE Loss: 0.4050479084

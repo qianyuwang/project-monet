@@ -10,6 +10,7 @@ def default_loader(path):
 
 def default_list_reader(file_dir):
     source = os.listdir(file_dir)
+    source.sort()
     imgList = []
     for dir in source:
         dir_tar = dir[:-10] + 'target.png'

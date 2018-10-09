@@ -16,6 +16,8 @@ from SaveImage import save_images
 from metrics import SSIM
 from loadimg import ImageList
 
+from tensorboardX import SummaryWriter
+
 # Training settings
 parser = argparse.ArgumentParser(description="PyTorch DemoireNet")
 parser.add_argument("--batchSize", type=int, default=1, help="training batch size")
@@ -37,7 +39,7 @@ parser.add_argument("--pretrained", default="", type=str, help="path to pretrain
 
 def main():
 
-    global opt, model, training_data_loader, testing_data_loader
+    global opt, model, training_data_loader, testing_data_loader ,writer
     opt = parser.parse_args()
     print(opt)    
 
@@ -121,10 +123,12 @@ def main():
     optimizer = optim.Adam(model.parameters(), lr=opt.lr)
     print("===> Training")
     for epoch in range(opt.start_epoch, opt.nEpochs + 1):
+        writer = SummaryWriter(log_dir='logs')
         train( optimizer, criterion, epoch)
         save_checkpoint(model, epoch)
         if epoch%10==0:
            test( criterion, epoch)
+    writer.close()
 
 
 def adjust_learning_rate( epoch):
@@ -162,10 +166,12 @@ def train(optimizer, criterion, epoch):
         optimizer.step()
 
         if iteration%10 == 0:
+            writer.add_scalar('data/sin', loss.item(), epoch*iteration)
             loss_record="===> Epoch[{}]({}/{}): Loss: {:.10f}".format(epoch, iteration, len(training_data_loader), loss.item())
             with open("train_loss_log.txt", "a") as train_log_file:
                 train_log_file.write(loss_record + '\n')
             print(loss_record)
+    writer.add_scalar('data/sin', epoch_loss, epoch)
     epoch_loss_record="===>Training Epoch [{}] Complete: Avg. MSE Loss: {:.10f}".format(epoch, epoch_loss / len(training_data_loader))
     with open("train_loss_log.txt", "a") as train_log_file:
         train_log_file.write(epoch_loss_record+ '\n')
@@ -178,7 +184,6 @@ def test(criterion, epoch):
     print("===> Testing")
     with torch.no_grad():
         for iteration, batch in enumerate(testing_data_loader, 1):
-            print('into test')
             input, target = batch[0], batch[1]
             if opt.cuda:
                 input = input.cuda()
