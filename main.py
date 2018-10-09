@@ -166,12 +166,12 @@ def train(optimizer, criterion, epoch):
         optimizer.step()
 
         if iteration%10 == 0:
-            writer.add_scalar('data/sin', loss.item(), epoch*iteration)
+            writer.add_scalar('train_iterations_loss', loss.item(), epoch*iteration)
             loss_record="===> Epoch[{}]({}/{}): Loss: {:.10f}".format(epoch, iteration, len(training_data_loader), loss.item())
             with open("train_loss_log.txt", "a") as train_log_file:
                 train_log_file.write(loss_record + '\n')
             print(loss_record)
-    writer.add_scalar('data/sin', epoch_loss, epoch)
+    writer.add_scalar('epoch_loss', epoch_loss, epoch)
     epoch_loss_record="===>Training Epoch [{}] Complete: Avg. MSE Loss: {:.10f}".format(epoch, epoch_loss / len(training_data_loader))
     with open("train_loss_log.txt", "a") as train_log_file:
         train_log_file.write(epoch_loss_record+ '\n')
@@ -205,6 +205,9 @@ def test(criterion, epoch):
                                                                                             avg_psnr / len(testing_data_loader),
                                                                                             avg_ssim / len(testing_data_loader),
                                                                                          avg_mse / len(testing_data_loader))
+        writer.add_scalar('test_epoch_psnr', avg_psnr, epoch)
+        writer.add_scalar('test_epoch_ssim', avg_ssim, epoch)
+        writer.add_scalar('test_epoch_mse', avg_mse, epoch)
         print(test_loss_record)
         with open("test_loss_log.txt","a") as test_log_file:
             test_log_file.write(test_loss_record+ '\n')
