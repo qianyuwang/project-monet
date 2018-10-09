@@ -25,6 +25,7 @@ parser.add_argument("--lr", type=float, default=1e-3, help="Learning Rate. Defau
 parser.add_argument("--step", type=int, default=1000, help="Sets the learning rate to the initial LR decayed by momentum every n epochs, Default: n=250")
 parser.add_argument("--cuda", action="store_true", help="Use cuda?")
 parser.add_argument("--is_debug", action="store_true", help="Use debug path?")
+parser.add_argument("--seed", type=int, default=None, help="random seed")
 parser.add_argument("--resume", default="", type=str, help="Path to checkpoint (default: none)")
 parser.add_argument("--start-epoch", default=1, type=int, help="Manual epoch number (useful on restarts)")
 parser.add_argument("--clip", type=float, default=0.01, help="Clipping Gradients. Default=0.1")
@@ -43,10 +44,10 @@ def main():
     cuda = opt.cuda
     if cuda and not torch.cuda.is_available():
         raise Exception("No GPU found, please run without --cuda")
-
-    opt.seed = random.randint(1, 10000)
-    print("Random Seed: ", opt.seed)
-    torch.manual_seed(opt.seed)
+    if not opt.seed:
+        opt.seed = random.randint(1, 10000)
+        print("Random Seed: ", opt.seed)
+        torch.manual_seed(opt.seed)
     if cuda:
         torch.cuda.manual_seed(opt.seed)
 
@@ -54,17 +55,15 @@ def main():
         
     print("===> Loading datasets")
     if opt.is_debug:
-        train_path_src = "/home/wqy/Documents/moire-test/source/"
-        train_path_tgt = "/home/wqy/Documents/moire-test/target/"
-        test_path_src = "/home/wqy/Documents/moire-test/source/"
-        test_path_tgt = "/home/wqy/Documents/moire-test/target/"
+        train_path_src = "/home/wqy/Documents/smoire-test/source/"
+        train_path_tgt = "/home/wqy/Documents/smoire-test/target/"
+        test_path_src = "/home/wqy/Documents/smoire-test/source/"
+        test_path_tgt = "/home/wqy/Documents/smoire-test/target/"
         training_data_loader = torch.utils.data.DataLoader(
             ImageList(rootsour=train_path_src, roottar=train_path_tgt,
                       transform=transforms.Compose([
-                          transforms.RandomCrop(64, pad_if_needed=True),
-                          transforms.RandomHorizontalFlip(),
-                          transforms.FiveCrop(64),
-                          transforms.Lambda(lambda crops: torch.stack([transforms.ToTensor()(crop) for crop in crops])),
+                      transforms.CenterCrop(64),
+                      transforms.ToTensor(),
                       ])),
             batch_size=opt.batchSize, shuffle=True)
 
@@ -74,7 +73,7 @@ def main():
                           transforms.CenterCrop(64),
                           transforms.ToTensor(),
                       ])),
-            batch_size=opt.testBatchSize, shuffle=True)
+            batch_size=opt.testBatchSize, shuffle=False)
     else:
         train_path_src = "/home/diplab/Documents/demoire/moire-data/strainData/source/"
         train_path_tgt = "/home/diplab/Documents/demoire/moire-data/strainData/target/"
