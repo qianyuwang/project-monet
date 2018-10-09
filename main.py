@@ -61,7 +61,7 @@ def main():
         training_data_loader = torch.utils.data.DataLoader(
             ImageList(rootsour=train_path_src, roottar=train_path_tgt,
                       transform=transforms.Compose([
-                          transforms.RandomCrop(640, pad_if_needed=True),
+                          transforms.RandomCrop(64, pad_if_needed=True),
                           transforms.RandomHorizontalFlip(),
                           transforms.FiveCrop(64),
                           transforms.Lambda(lambda crops: torch.stack([transforms.ToTensor()(crop) for crop in crops])),
@@ -76,29 +76,27 @@ def main():
                       ])),
             batch_size=opt.testBatchSize, shuffle=True)
     else:
-        train_path_src = "/home/diplab/Documents/demoire/moire-data/trainData/source/"
-        train_path_tgt = "/home/diplab/Documents/demoire/moire-data/trainData/target/"
-        test_path_src = "/home/diplab/Documents/demoire/moire-data/testData/source/"
-        test_path_tgt = "/home/diplab/Documents/demoire/moire-data/testData/target/"
+        train_path_src = "/home/diplab/Documents/demoire/moire-data/strainData/source/"
+        train_path_tgt = "/home/diplab/Documents/demoire/moire-data/strainData/target/"
+        test_path_src = "/home/diplab/Documents/demoire/moire-data/stestData/source/"
+        test_path_tgt = "/home/diplab/Documents/demoire/moire-data/stestData/target/"
 
 
         training_data_loader = torch.utils.data.DataLoader(
             ImageList(rootsour=train_path_src, roottar=train_path_tgt,
                       transform=transforms.Compose([
-                transforms.RandomCrop(640, pad_if_needed=True),
-                transforms.RandomHorizontalFlip(),
-                transforms.FiveCrop(256),
-                transforms.Lambda(lambda crops: torch.stack([transforms.ToTensor()(crop) for crop in crops])),
+                transforms.CenterCrop(512),
+                transforms.ToTensor(),
             ])),
             batch_size=opt.batchSize, shuffle=True)
 
         testing_data_loader = torch.utils.data.DataLoader(
             ImageList(rootsour=test_path_src, roottar=test_path_tgt,
                       transform=transforms.Compose([
-                transforms.CenterCrop(640),
+                transforms.CenterCrop(512),
                 transforms.ToTensor(),
             ])),
-            batch_size=opt.testBatchSize, shuffle=True)
+            batch_size=opt.testBatchSize, shuffle=False)
 
     print("===> Building model")
     model = MoireCNN()
@@ -147,21 +145,15 @@ def train(optimizer, criterion, epoch):
 
     for iteration, batch in enumerate(training_data_loader, 1):
         input, target = batch[0], batch[1]
-        bs, ncrops, c, h, w = input.size()
-
-        input = input.view(-1, c, h, w)
 
         if opt.cuda:
             input = input.cuda()
             target = target.cuda()
             
         output = model(input)
-        output_avg = output.view(bs, ncrops, -1).mean(1)  # avg over crops
-        target = target.view(-1, c, h, w)
-        target_avg = target.view(bs, ncrops, -1).mean(1)  # avg over crops
         #output=nn.parallel.data_parallel(model,input,range(2))
 
-        loss = criterion(output_avg, target_avg)
+        loss = criterion(output, target)
         epoch_loss += loss.item()
 
         optimizer.zero_grad()
