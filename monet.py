@@ -47,6 +47,24 @@ class MoireCNN(nn.Module):
         nn.BatchNorm2d(64),
         nn.ReLU(inplace=True)
         )
+        
+        self.scale4 = nn.Sequential(
+        nn.Conv2d(64, 64, 3, 2, 1),
+        nn.BatchNorm2d(64),
+        nn.ReLU(inplace=True),
+        nn.Conv2d(64, 64, 3, 1, 1),
+        nn.BatchNorm2d(64),
+        nn.ReLU(inplace=True)
+        )
+            
+        self.scale5 = nn.Sequential(
+        nn.Conv2d(64, 64, 3, 2, 1),
+        nn.BatchNorm2d(64),
+        nn.ReLU(inplace=True),
+        nn.Conv2d(64, 64, 3, 1, 1),
+        nn.BatchNorm2d(64),
+        nn.ReLU(inplace=True)
+        )
 
 
         # #Multi-player
@@ -141,8 +159,8 @@ class MoireCNN(nn.Module):
         scale1 = self.scale1(input)
         scale2 = self.scale2(scale1)
         scale3 = self.scale3(scale2)
-        scale4 = self.scale3(scale3)
-        scale5 = self.scale3(scale4)
+        scale4 = self.scale4(scale3)
+        scale5 = self.scale5(scale4)
 
         # print('sc1',scale1.shape)
         # print('sc2', scale2.shape)
