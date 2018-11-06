@@ -16,7 +16,7 @@ def save_images(epoch,images, name, nrow=10):
      
   im = im.transpose(0,2,3,1)
   imsave(im, [nrow, int(math.ceil(float(im.shape[0])/nrow))], "results/epoch_{}/".format(epoch)+name) 
-  
+
 def merge(images, size):
   #print(images.shape())
   h, w = images.shape[1], images.shape[2]
