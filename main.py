@@ -28,22 +28,29 @@ parser.add_argument("--batchSize", type=int, default=1, help="training batch siz
 parser.add_argument('--testBatchSize', type=int, default=1, help='training batch size')
 parser.add_argument("--nEpochs", type=int, default=1000, help="number of epochs to train for")
 parser.add_argument("--lr", type=float, default=1e-3, help="Learning Rate. Default=1e-4")
-parser.add_argument("--step", type=int, default=1000, help="Sets the learning rate to the initial LR decayed by momentum every n epochs, Default: n=250")
+parser.add_argument("--step", type=int, default=40, help="Sets the learning rate to the initial LR decayed by momentum every n epochs, Default: n=250")
 parser.add_argument("--cuda", action="store_true", help="Use cuda?")
-parser.add_argument("--is_debug", action="store_true", help="Use debug path?")
 parser.add_argument("--seed", type=int, default=None, help="random seed")
 parser.add_argument("--resume", default="", type=str, help="Path to checkpoint (default: none)")
 parser.add_argument("--start-epoch", default=1, type=int, help="Manual epoch number (useful on restarts)")
 parser.add_argument("--clip", type=float, default=0.01, help="Clipping Gradients. Default=0.1")
 parser.add_argument("--threads", type=int, default=0, help="Number of threads for data loader to use, Default: 1")
 parser.add_argument("--momentum", default=0.9, type=float, help="Momentum, Default: 0.9")
-parser.add_argument("--weight-decay", "--wd", default=0, type=float, help="weight decay, Default: 0")
+parser.add_argument("--weight-decay", "--wd", default=0.0001, type=float, help="weight decay, Default: 0")
 parser.add_argument("--pretrained", default="", type=str, help="path to pretrained model (default: none)")
 
 
+def weights_init(m):
+    classname = m.__class__.__name__
+    if classname.find('Conv') != -1:
+        m.weight.data.normal_(0.0, 0.02)
+    elif classname.find('BatchNorm') != -1:
+        m.weight.data.normal_(1.0, 0.02)
+        m.bias.data.fill_(0)
+
 def main():
 
-    global opt, model, training_data_loader, testing_data_loader ,writer,binet
+    global opt, model, binet,training_data_loader, testing_data_loader ,testing_realdata_loader, writer
     opt = parser.parse_args()
     print(opt)    
 
@@ -61,12 +68,14 @@ def main():
         
     print("===> Loading datasets")
 
-    train_path_src = "data/src/"
-    train_path_tgt = "data/tgt/"
-    train_path_gt  = "data/gt/"
-    test_path_src  = "data/src/"
-    test_path_tgt  = "data/tgt/"
-    test_path_gt   = "data/gt/"
+    train_path_src = "../data/src/"
+    train_path_tgt = "../data/tgt/"
+    train_path_gt  = "../data/gt/"
+    test_path_src  = "../data/src/"
+    test_path_tgt  = "../data/tgt/"
+    test_path_gt   = "../data/gt/"
+    test_real_path_src  = "../data/src/"
+
     training_data_loader = torch.utils.data.DataLoader(
          ImageList(rootsour=train_path_src, roottar=train_path_tgt,
                    rootgt=train_path_gt,
@@ -85,6 +94,15 @@ def main():
                   ])),
         batch_size=opt.testBatchSize, shuffle=False)
 
+    testing_realdata_loader = torch.utils.data.DataLoader(
+        ImageList(rootsour=test_real_path_src, roottar=None,
+                  rootgt=None,
+                  transform=transforms.Compose([
+                      transforms.CenterCrop(256),
+                      transforms.ToTensor(),
+                  ]),
+                  real_data = True),
+        batch_size=opt.testBatchSize, shuffle=False)
 
     print("===> Building model")
     model = MoireCNN()
@@ -99,30 +117,35 @@ def main():
 
     print("===> Setting GPU")
     if cuda:
-        model = model.cuda()                         #这两句是把网络和loss放在cuda上
+        model = model.cuda()
         criterion = criterion.cuda()
+
+    model.apply(weights_init)
+    binet.apply(weights_init)
 
     # optionally resume from a checkpoint
     if opt.resume:
-        if os.path.isfile(opt.resume):  #检验是否存在opt.resume
+        if os.path.isfile(opt.resume):
             print("=> loading checkpoint '{}'".format(opt.resume))
             checkpoint = torch.load(opt.resume)
             opt.start_epoch = checkpoint["epoch"] + 1
             model.load_state_dict(checkpoint["model"])
+            binet.load_state_dict(checkpoint["binet"])
         else:
             print("=> no checkpoint found at '{}'".format(opt.resume))
     
     print("===> Setting Optimizer")
     #optimizer = optim.SGD(model.parameters(), lr=opt.lr,momentum=0.9, weight_decay=1e-4)
-    optimizer = optim.Adam(model.parameters(), lr=opt.lr)
-    optimizer_bi = optim.Adam(binet.parameters(), lr=opt.lr)
+    optimizer = optim.Adam(model.parameters(), lr=opt.lr, weight_decay=opt.weight_decay)
+    optimizer_bi = optim.Adam(binet.parameters(), lr=opt.lr, weight_decay=opt.weight_decay)
     print("===> Training")
     for epoch in range(opt.start_epoch, opt.nEpochs + 1):
         writer = SummaryWriter(log_dir='logs')
         train( optimizer,optimizer_bi, criterion, epoch)
-        save_checkpoint(model, epoch)
+        save_checkpoint(model, binet, epoch)
         if epoch%1==0:
            test( criterion, epoch)
+           test_real(epoch)
     writer.close()
 
 
@@ -158,14 +181,16 @@ def train(optimizer,optimizer_bi, criterion, epoch):
         epoch_loss1 += loss1.item()
         loss2=criterion(binary,groundtruth)
         epoch_loss2+=loss2.item()
+
         optimizer.zero_grad()
+        optimizer_bi.zero_grad()
         loss1.backward()
-        #nn.utils.clip_grad_norm_(model.parameters(),opt.clip)
         optimizer.step()
         loss2.backward()
         optimizer_bi.step()
+        #nn.utils.clip_grad_norm_(model.parameters(),opt.clip)
 
-        if iteration%10 == 0:
+        if iteration%20 == 0:
             writer.add_scalar('train_iterations_loss1', loss1.item(), epoch*iteration)
             writer.add_scalar('train_iterations_loss2', loss2.item(), epoch*iteration)
             loss_record="===> Epoch[{}]({}/{}): Loss1: {:.4f},loss2:{:.4f}".format(epoch, iteration, len(training_data_loader), loss1.item(),loss2.item())
@@ -182,7 +207,7 @@ def train(optimizer,optimizer_bi, criterion, epoch):
 def test(criterion, epoch):
     avg_mse1, avg_mse2, avg_psnr =0,0,0
     #avg_ssim = 0
-    print("===> Testing")
+    print("===> Testing simulation images")
     with torch.no_grad():
         for iteration, batch in enumerate(testing_data_loader, 1):
             input, target, groundtruth = batch[0], batch[1], batch[2]
@@ -221,10 +246,26 @@ def test(criterion, epoch):
         with open("test_loss_log.txt","a") as test_log_file:
             test_log_file.write(test_loss_record+ '\n')
 
-    
-def save_checkpoint(model, epoch):
+def test_real(epoch):
+    print("===> Testing Real images")
+    with torch.no_grad():
+        for iteration, batch in enumerate(testing_realdata_loader, 1):
+            input = batch
+            if opt.cuda:
+                input = input.cuda()
+            prediction = model(input)
+            input_bi = binet(input)
+            prediction_bi = binet(prediction)
+            if epoch%1 == 0:
+                save_images(epoch,prediction,'epoch_{}_realimg_{}_out.jpg'.format(epoch,iteration),1)
+                save_images(epoch,prediction_bi,'epoch_{}_realimg_{}_binary_out.jpg'.format(epoch,iteration),1)
+                save_images(epoch,input,'epoch_{}_realimg_{}_in.jpg'.format(epoch,iteration),1)
+                save_images(epoch, input_bi,'epoch_{}_realimg_{}_binary_in.jpg'.format(epoch,iteration),1)
+    print("===> Done")
+
+def save_checkpoint(model,binet, epoch):
     model_out_path = "model/" + "model_epoch_{}.pth".format(epoch)
-    state = {"epoch": epoch ,"model": model.state_dict()}
+    state = {"epoch": epoch ,"model": model.state_dict(),"binet":binet.state_dict()}
     if not os.path.exists("model/"):
         os.makedirs("model/")
 

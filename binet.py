@@ -38,10 +38,7 @@ class BiCNN(nn.Module):
 
 
     def forward(self, x):
-        output = x
-
-        output_gray = 0.299 * output[:, 0, :, :] + 0.587 * output[:, 1, :, :] + 0.114 * output[:, 2, :, :]
-        output_gray = output_gray.unsqueeze(0)
+        output_gray = x
 
         thresold_gray = self.threshold(output_gray)
         output_bina = output_gray - thresold_gray
