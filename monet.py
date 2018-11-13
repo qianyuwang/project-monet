@@ -29,10 +29,8 @@ class MoireCNN(nn.Module):
 
         self.scale2 = nn.Sequential(
         nn.Conv2d(32, 32, 3, 2, 1),
-        nn.BatchNorm2d(32),
         nn.ReLU(inplace=True),
         nn.Conv2d(32, 64, 3, 1, 1),
-        nn.BatchNorm2d(64),
         nn.ReLU(inplace=True)
         )
 
@@ -66,13 +64,13 @@ class MoireCNN(nn.Module):
 
         self.descale1 = nn.Sequential(
               nn.Conv2d(32, 1, 3, 1, 1),
-              nn.Sigmoid()
+              nn.Tanh()
           )
         self.descale2 = nn.Sequential(
             nn.ConvTranspose2d(64, 32, 4, 2, 1),
             nn.ReLU(True),
             nn.Conv2d(32, 1, 3, 1, 1),
-            nn.Sigmoid()
+            nn.Tanh()
           )
 
         self.descale3 = nn.Sequential(
@@ -81,7 +79,7 @@ class MoireCNN(nn.Module):
             nn.ConvTranspose2d(64, 32, 4, 2, 1),
             nn.ReLU(True),
             nn.Conv2d(32, 1, 3, 1, 1),
-            nn.Sigmoid()
+            nn.Tanh()
         )
 
         self.descale4 = nn.Sequential(
@@ -92,7 +90,7 @@ class MoireCNN(nn.Module):
             nn.ConvTranspose2d(32, 32, 4, 2, 1),
             nn.ReLU(True),
             nn.Conv2d(32, 1, 3, 1, 1),
-            nn.Sigmoid()
+            nn.Tanh()
         )
 
         self.descale5 = nn.Sequential(
@@ -105,9 +103,9 @@ class MoireCNN(nn.Module):
             nn.ConvTranspose2d(32, 32, 4, 2, 1),
             nn.ReLU(True),
             nn.Conv2d(32, 1, 3, 1, 1),
-            nn.Sigmoid()
+            nn.Tanh()
         )
-
+        self.acti = nn.Sigmoid()
         # self.threshold = nn.Conv2d(1, 1, 3, 1, 1)
         # print(self.threshold.parameters)
         # self.lamda = 1000
@@ -144,7 +142,7 @@ class MoireCNN(nn.Module):
         descale1 = self.descale1(mid1)
 
         output = descale1 + descale2 + descale3 + descale4 + descale5
-
+        output = self.acti(output)
         # output_gray = 0.299 * output[:,0,:,:] + 0.587 * output[:,1,:,:] + 0.114 * output[:,2,:,:]
         # output_gray = output_gray.unsqueeze(0)
         #

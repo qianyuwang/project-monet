@@ -7,18 +7,13 @@ import math, random
 import torch.backends.cudnn as cudnn
 import torch.nn as nn
 import torch.optim as optim
-import cv2
-import numpy
-
 import torch.utils.data
 import torchvision.transforms as transforms
 from monet import MoireCNN
 from binet import BiCNN
 
-from SaveImage import save_images
-from metrics import SSIM
 from loadimg import ImageList
-
+import torchvision.utils as vutils
 from tensorboardX import SummaryWriter
 from threshold import threshold_func
 
@@ -118,6 +113,7 @@ def main():
     print("===> Setting GPU")
     if cuda:
         model = model.cuda()
+        binet = binet.cuda()
         criterion = criterion.cuda()
 
     model.apply(weights_init)
@@ -143,7 +139,7 @@ def main():
         writer = SummaryWriter(log_dir='logs')
         train( optimizer,optimizer_bi, criterion, epoch)
         save_checkpoint(model, binet, epoch)
-        if epoch%1==0:
+        if epoch%10==0:
            test( criterion, epoch)
            test_real(epoch)
     writer.close()
@@ -190,16 +186,16 @@ def train(optimizer,optimizer_bi, criterion, epoch):
         optimizer_bi.step()
         #nn.utils.clip_grad_norm_(model.parameters(),opt.clip)
 
-        if iteration%20 == 0:
+        if iteration%50 == 0:
             writer.add_scalar('train_iterations_loss1', loss1.item(), epoch*iteration)
             writer.add_scalar('train_iterations_loss2', loss2.item(), epoch*iteration)
-            loss_record="===> Epoch[{}]({}/{}): Loss1: {:.4f},loss2:{:.4f}".format(epoch, iteration, len(training_data_loader), loss1.item(),loss2.item())
+            loss_record="===> Epoch[{}]({}/{}): Loss1: {:.6f},loss2:{:.4f}".format(epoch, iteration, len(training_data_loader), loss1.item(),loss2.item())
             with open("train_loss_log.txt", "a") as train_log_file:
                 train_log_file.write(loss_record + '\n')
             print(loss_record)
     writer.add_scalar('epoch_loss1', epoch_loss1, epoch)
     writer.add_scalar('epoch_loss2',epoch_loss2,epoch)
-    epoch_loss_record="===>Training Epoch [{}] Complete: Avg. MSE Loss1: {:.4f},Loss2: {:.4f}".format(epoch, epoch_loss1 / len(training_data_loader),epoch_loss2/len(training_data_loader))
+    epoch_loss_record="===>Training Epoch [{}] Complete: Avg. MSE Loss1: {:.6f},Loss2: {:.4f}".format(epoch, epoch_loss1 / len(training_data_loader),epoch_loss2/len(training_data_loader))
     with open("train_loss_log.txt", "a") as train_log_file:
         train_log_file.write(epoch_loss_record+ '\n')
     print(epoch_loss_record)
@@ -208,6 +204,8 @@ def test(criterion, epoch):
     avg_mse1, avg_mse2, avg_psnr =0,0,0
     #avg_ssim = 0
     print("===> Testing simulation images")
+    if not os.path.exists("results/epoch_{}/".format(epoch)):
+        os.makedirs("results/epoch_{}/".format(epoch))
     with torch.no_grad():
         for iteration, batch in enumerate(testing_data_loader, 1):
             input, target, groundtruth = batch[0], batch[1], batch[2]
@@ -228,12 +226,19 @@ def test(criterion, epoch):
             avg_mse2+=mse2.item()
 
             if epoch%1 == 0:
-                save_images(epoch,prediction,'epoch_{}_img_{}_out.jpg'.format(epoch,iteration),1)
-                save_images(epoch,input,'epoch_{}_img_{}_in.jpg'.format(epoch,iteration),1)
-                save_images(epoch,prediction_bi,'epoch_{}_img_{}_binary_out.jpg'.format(epoch,iteration),1)
-                save_images(epoch,target,'epoch_{}_img_{}_tgt.jpg'.format(epoch,iteration),1)
-                save_images(epoch,groundtruth,'epoch_{}_img_{}_binary_gt.jpg'.format(epoch,iteration),1)
-                save_images(epoch, input_bi,'epoch_{}_img_{}_binary_in.jpg'.format(epoch,iteration),1)
+                vutils.save_image(prediction.data.cpu(),
+                                  'results/epoch_{}/epoch_{}_img_{}_out.jpg'.format(epoch,epoch,iteration))
+                vutils.save_image(input.data.cpu(),
+                                 'results/epoch_{}/epoch_{}_img_{}_in.jpg'.format(epoch, epoch, iteration))
+                vutils.save_image(target.data.cpu(),
+                                 'results/epoch_{}/epoch_{}_img_{}_tgt.jpg'.format(epoch, epoch, iteration))
+                vutils.save_image(input_bi.data.cpu(),
+                                 'results/epoch_{}/epoch_{}_img_{}_bi_in.jpg'.format(epoch, epoch, iteration))
+                vutils.save_image(prediction_bi.data.cpu(),
+                                 'results/epoch_{}/epoch_{}_img_{}_bi_out.jpg'.format(epoch, epoch, iteration))
+                vutils.save_image(groundtruth.data.cpu(),
+                                 'results/epoch_{}/epoch_{}_img_{}_bi_gt.jpg'.format(epoch, epoch, iteration))
+
         test_loss_record="===>Testing Epoch[{}] Avg. PSNR: {:.4f} dB,  MSE1:{:.4f},MSE2:{:.4f}".format(epoch,
                                                                                             avg_psnr / len(testing_data_loader),
                                                                                          avg_mse1 / len(testing_data_loader),
@@ -248,6 +253,8 @@ def test(criterion, epoch):
 
 def test_real(epoch):
     print("===> Testing Real images")
+    if not os.path.exists("results_real/epoch_{}/".format(epoch)):
+        os.makedirs("results_real/epoch_{}/".format(epoch))
     with torch.no_grad():
         for iteration, batch in enumerate(testing_realdata_loader, 1):
             input = batch
@@ -257,10 +264,14 @@ def test_real(epoch):
             input_bi = binet(input)
             prediction_bi = binet(prediction)
             if epoch%1 == 0:
-                save_images(epoch,prediction,'epoch_{}_realimg_{}_out.jpg'.format(epoch,iteration),1)
-                save_images(epoch,prediction_bi,'epoch_{}_realimg_{}_binary_out.jpg'.format(epoch,iteration),1)
-                save_images(epoch,input,'epoch_{}_realimg_{}_in.jpg'.format(epoch,iteration),1)
-                save_images(epoch, input_bi,'epoch_{}_realimg_{}_binary_in.jpg'.format(epoch,iteration),1)
+                vutils.save_image(prediction.data.cpu(),
+                                  'results_real/epoch_{}/epoch_{}_img_{}_out.jpg'.format(epoch,epoch,iteration))
+                vutils.save_image(input.data.cpu(),
+                                 'results_real/epoch_{}/epoch_{}_img_{}_in.jpg'.format(epoch, epoch, iteration))
+                vutils.save_image(input_bi.data.cpu(),
+                                 'results_real/epoch_{}/epoch_{}_img_{}_bi_in.jpg'.format(epoch, epoch, iteration))
+                vutils.save_image(prediction_bi.data.cpu(),
+                                 'results_real/epoch_{}/epoch_{}_img_{}_bi_out.jpg'.format(epoch, epoch, iteration))
     print("===> Done")
 
 def save_checkpoint(model,binet, epoch):
